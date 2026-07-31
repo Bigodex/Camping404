@@ -5,7 +5,9 @@ using UnityEngine.InputSystem;
 public class TentInteractionZone : MonoBehaviour
 {
     [Header("Interface")]
-    [SerializeField] private GameObject interactionPrompt;
+    [SerializeField] private InteractionPromptUI interactionPrompt;
+    [SerializeField] private Transform promptAnchor;
+    [SerializeField] private string promptTexto = "[F] ENTRAR";
     [SerializeField] private CanvasGroup fadePanel;
 
     [Header("Realidades")]
@@ -20,13 +22,14 @@ public class TentInteractionZone : MonoBehaviour
     [SerializeField] private float duracaoFade = 0.5f;
 
     private CharacterController characterController;
+
     private bool playerDentroDaArea;
     private bool emTransicao;
 
     private void Start()
     {
         if (interactionPrompt != null)
-            interactionPrompt.SetActive(false);
+            interactionPrompt.EsconderImediatamente();
 
         if (fadePanel != null)
         {
@@ -57,8 +60,15 @@ public class TentInteractionZone : MonoBehaviour
 
         playerDentroDaArea = true;
 
-        if (!emTransicao && interactionPrompt != null)
-            interactionPrompt.SetActive(true);
+        if (!emTransicao &&
+            interactionPrompt != null &&
+            promptAnchor != null)
+        {
+            interactionPrompt.Mostrar(
+                promptAnchor,
+                promptTexto
+            );
+        }
     }
 
     private void OnTriggerExit(Collider other)
@@ -69,7 +79,7 @@ public class TentInteractionZone : MonoBehaviour
         playerDentroDaArea = false;
 
         if (interactionPrompt != null)
-            interactionPrompt.SetActive(false);
+            interactionPrompt.Esconder();
     }
 
     private IEnumerator TrocarRealidadeComFade()
@@ -80,7 +90,10 @@ public class TentInteractionZone : MonoBehaviour
             player == null ||
             tentExitPoint == null)
         {
-            Debug.LogError("Alguma referência não foi conectada no Inspector.");
+            Debug.LogError(
+                "Alguma referência do TentInteractionZone não foi conectada."
+            );
+
             yield break;
         }
 
@@ -88,18 +101,15 @@ public class TentInteractionZone : MonoBehaviour
         playerDentroDaArea = false;
 
         if (interactionPrompt != null)
-            interactionPrompt.SetActive(false);
+            interactionPrompt.Esconder();
 
         fadePanel.blocksRaycasts = true;
 
-        // Escurece.
         yield return FazerFade(0f, 1f);
 
-        // Tudo isso acontece enquanto a tela está preta.
         TrocarRealidade();
         MoverPlayerParaSaida();
 
-        // Clareia.
         yield return FazerFade(1f, 0f);
 
         fadePanel.blocksRaycasts = false;
@@ -120,7 +130,10 @@ public class TentInteractionZone : MonoBehaviour
             characterController.enabled = true;
     }
 
-    private IEnumerator FazerFade(float alphaInicial, float alphaFinal)
+    private IEnumerator FazerFade(
+        float alphaInicial,
+        float alphaFinal
+    )
     {
         float tempo = 0f;
         fadePanel.alpha = alphaInicial;
@@ -129,7 +142,9 @@ public class TentInteractionZone : MonoBehaviour
         {
             tempo += Time.unscaledDeltaTime;
 
-            float progresso = tempo / duracaoFade;
+            float progresso = Mathf.Clamp01(
+                tempo / duracaoFade
+            );
 
             fadePanel.alpha = Mathf.Lerp(
                 alphaInicial,
